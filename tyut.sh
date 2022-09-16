@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
+username=wangxiaolong5934
+password=Sxcz3208
 sh_ver="1.5"
 MotionPro_ver="1.2.7"
 MotionPro_file="/usr/bin/MotionPro"
 Green_font_prefix="\033[32m" && Red_font_prefix="\033[31m" && Green_background_prefix="\033[42;37m" && Red_background_prefix="\033[41;37m" && Font_color_suffix="\033[0m"
-check_ip=202.207.240.243
+check_ip=jxgl1.tyut.edu.cn
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 script_path=$(readlink -f "$0")
 check_root() {
@@ -46,17 +48,15 @@ install_motionpro() {
 add_route() {
     route del -net 0.0.0.0 gw 1.1.1.1 dev tun0
     route add -net 0.0.0.0 gw ${route_gateway} dev ${route_interface}
+    #教学管理系统1
     route add -net 202.207.0.0 netmask 255.255.0.0 gw 1.1.1.1 dev tun0
-    route add -net 219.226.0.0 netmask 255.255.0.0 gw 1.1.1.1 dev tun0
+    #route add -net 219.226.0.0 netmask 255.255.0.0 gw 1.1.1.1 dev tun0
 }
-ac_login() {
-    curl 'http://219.226.127.250:801/eportal/?c=ACSetting&a=Login&wlanuserip=null&wlanacip=null&wlanacname=null&port=&iTermType=1&mac=123456789012&ip=000.000.000.000&redirect=null' -H 'Connection: keep-alive' -H 'Content-Type: application/x-www-form-urlencoded' -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36' -H "Cookie: divshowUID=${username}; md5_login=${username}%7C${password}; PHPSESSID=sbtsjh237ps9q23qm3es6jfpa1" --data "DDDDD=${username}&upass=${password}&save_me=1" --compressed --insecure
-}
+
 crontab() {
     check
     status=$?
     [[ ${status} -eq 2 ]] && restart
-    [[ ${status} -eq 1 ]] && ac_login
 }
 stop() {
     MotionPro -s
@@ -66,7 +66,7 @@ stop() {
     if [ ${release} == 'ubuntu' ]; then
         sed -i "/${script_path} crontab/d" /var/spool/cron/crontabs/root
     else
-        sed -i "/${script_path} crontab/d" /var/spool/cron/root
+        sed -i '/tyut.sh/d' /var/spool/cron/root
     fi
     echo -e "cron deleted"
 }
@@ -89,7 +89,6 @@ start() {
                     sleep 1s
                     add_route
                     sleep 2s
-                    ac_login
                     check
                 else
                     echo -e "connection failed" && exit 1
@@ -121,8 +120,8 @@ start() {
 }
 check() {
     if [ $(route -n | awk '$8=="tun0"{print $8}' | wc -l) -gt 0 ]; then
-        ping -c1 $check_ip >>/dev/null
-        if [ $? -eq 0 ]; then
+	resp=$(curl  -s  -m 5 -w "%{http_code}" -o /dev/null  jxgl1.tyut.edu.cn)
+        if [ $resp==200 ]; then
             echo -e "vpn connected, and it seems ok" && return 0
         else
             echo -e "vpn connected, but can't connect the campus network" && return 1
@@ -177,6 +176,9 @@ main() {
         ;;
         reset)
             reset
+        ;;
+        add_route)
+            add_route
         ;;
         *)
             echo_help
